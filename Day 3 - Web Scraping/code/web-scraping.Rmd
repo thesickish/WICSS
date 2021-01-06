@@ -46,19 +46,19 @@ knitr::knit_hooks$set(mysize = function(before, options, envir) {
 
 # What is web-scraping?
 ## Terminology
-- Web-scraping is a method to collect data from websites
+- Web scraping is a method to collect and store data from websites
   - We use the code underlying a webpage to collect data (**scraping**)
   - The process is then repeated for other pages on the same website in an automated fashion (**crawling**)
 
 # What is web-scraping?
 ## Challenges
-- Different websites have different structures, so a script used to scrape one website will likely have to be changed to scrape another
-- Websites can be internally inconsistent, making them difficult to scrape
-- Some websites are easier to crawl than others
+- Different websites have different structures
+- Websites can be internally inconsistent
+- Some content is harder to collect (e.g. Javascript)
 - Some websites limit or prohibit scraping
 
-# When should I use it?
-## Commercial use cases
+# What is web-scraping?
+## Examples: Commercial use cases
 - Search engines
   - Google scrapes websites to create a searchable index of the internet
 - Price comparison
@@ -100,10 +100,10 @@ include_graphics('../images/fielser_et_al.png')
 - Do not burden the website
   - Limit the number of calls you make (similar to rate-limiting in APIs)
 - Avoid using the data in a way that may interfere with business
-  - i.e. Don't copy valuable data from a small business and share it on Github
+  - g.g. Don't copy valuable data from a small business and share it on Github
 
 # How to scrape a web page
-## Start by looking up ``robots.txt''
+## Start by looking up ``robots.txt``
 ```{r, out.width="70%",out.height="70%", fig.align="center"}
 include_graphics('../images/robots.png')
 ```
@@ -128,9 +128,10 @@ include_graphics('../images/robots.png')
 
 # How to scrape a web page
 ## Inspecting HTML
-- Open up a website and right click on any text or image on the screen
-  - You should see an option ``Inspect Element``
-  - This will allow you to see the code used to generate the page
+- Open up a website and right click on any part of the screen
+  - You should see an option titled ``Inspect Element`` or similar
+  - This will allow you to view the code used to generate the page
+    - You will see code related to the particular element you were hovering over when your right clicked
   
 # How to scrape a web page
 ```{r, out.width="70%",out.height="70%", fig.align="center"}
@@ -173,12 +174,9 @@ print(length(messages))
 print(substr(messages[[1]], 1, 50))
 ```
 
-
-
-
 # How to scrape a web page
 ## Getting user names
-Next we collect the name of each user. User information is found by parsing the ``.message-userDetails`` node. 
+Next we collect the name of each user. User information is found by parsing the ``.message-userDetails`` node. This is followed by some string manipulation to extract the name.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 users <- thread %>% html_nodes(".message-userDetails") %>%
   html_text() %>% str_trim()
@@ -188,21 +186,19 @@ users <- thread %>% html_nodes(".message-userDetails") %>%
   html_text() %>% str_trim() %>% str_split('\n') %>% pluck(1)
 users[[1]]
 ```
-We do some string manipulation to get the user names.
 
 # How to scrape a web page
 ## Collecting timestamps
-Finally, we also want to get the time-stamp of each message. While the forum only displays dates, we can actually get the full timestamp.
+Finally, we also want to get the time-stamp of each message. While the forum only displays dates, we can actually get the full timestamp. Note how ``time.u-dt`` returns too much information, so ``.u-concealed .u-dt`` is selected instead.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 dates <- thread %>% html_nodes("time.u-dt")
 length(dates)
 dates <- thread %>% html_nodes(".u-concealed .u-dt")
 length(dates)
-#dates <- date[-1]
 dates <- dates %>% html_attr("datetime")
 dates[[1]]
 ```
-Note how ``time.u-dt`` returns too much information, so ``.u-concealed .u-dt`` is selected instead.
+
 
 # How to scrape a web page
 ## Putting it all together
@@ -224,7 +220,8 @@ get.posts <- function(thread) {
 ```
 
 # How to scrape a web page
-## Putting it all together
+## Testing
+We can now test the function to confirm it returns the information we are expecting. In this case, we want to see the first five posts.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 results <- get.posts(thread)
 results[1:5,]
@@ -232,6 +229,7 @@ results[1:5,]
 
 # How to scrape a web page
 ## Pagination
+Each thread is split into pages, each containing 20 messages. We want to be able to navigate through these pages.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 links <- thread %>% html_nodes(".pageNav-jump") %>%
   html_attr("href")
@@ -244,14 +242,8 @@ next.page <- paste(base, pagination.info$links, sep = '')
 ```
 
 # How to scrape a web page
-## Pagination
-```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
-results <- get.posts(read_html(next.page))
-results[1:5,]
-```
-
-# How to scrape a web page
 ## Pagination function
+Let's create a function so we can easily repeat the process.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 get.next.page <- function(thread){
   links <- thread %>% html_nodes(".pageNav-jump") %>% 
@@ -266,14 +258,13 @@ get.next.page <- function(thread){
 }
 get.next.page(thread)
 ```
-<!--Note the website is pretty simply organized. We just need to find the max number of pages then increment-->
 
 # How to scrape a web page
 ## Testing the pagination function
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 thread.2 <- read_html(get.next.page(thread))
 pagination.2 <- get.next.page(thread.2)
-pagination.2
+print(pagination.2)
 ```
 
 # How to scrape a web page
@@ -281,7 +272,11 @@ pagination.2
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 thread.3 <- read_html(get.next.page(thread.2))
 pagination.3 <- get.next.page(thread.3)
-pagination.3
+print(pagination.3)
+
+thread.4 <- read_html(get.next.page(thread.3))
+pagination.4 <- get.next.page(thread.4)
+print(pagination.4)
 ```
 
 # How to scrape a web page
@@ -302,20 +297,22 @@ get.next.page <- function(thread){
   }
 }
 ```
-<!--Note: The results do not show properly when using knitr to render the slides. I will need to fix this. -->
 
 # How to scrape a web page
 ## Testing the pagination function
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
+thread.3 <- read_html(get.next.page(thread.2))
 pagination.3 <- get.next.page(thread.3)
-pagination.3
+print(pagination.3)
 
-pagination.2 <- get.next.page(thread.2)
-pagination.2
+thread.4 <- read_html(get.next.page(thread.3))
+pagination.4 <- get.next.page(thread.4)
+print(pagination.4)
 ```
 
 # How to scrape a web page
 ## Paginate and scrape
+Now we can put these functions together to scrape the entire thread.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 paginate.and.scrape <- function(url){
   thread <- read_html(url)
@@ -336,12 +333,12 @@ paginate.and.scrape <- function(url){
 ## Paginate and scrape
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 full.thread <- paginate.and.scrape(url)
-length(full.thread)
 print(full.thread)
 ```
 
 # How to scrape a web page
 ## Crawling a website
+We don't just want to collect a single conversation thread. We want to find all relevant threads and then apply the previous function. The function below allows us to collect links and titles for each thread within the sub-forum.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 get.threads <- function(url) {
   f <- read_html(url)
@@ -359,8 +356,7 @@ get.threads <- function(url) {
 # How to scrape a web page
 ## Crawling a website
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
-forum.url <- "https://thecatsite.com/forums/cat-behavior.5/"
-
+forum.url <- "https://thecatsite.com/forums/cat-behavior.5/" # This is a specific sub-forum devoted to cat behavior
 threads <- get.threads(forum.url)
 ```
 
@@ -378,7 +374,7 @@ print(threads$link)
 
 # How to scrape a web page
 ## Crawling a website
-**Exercise**: Write a function to iterate through the 10 pages of threads, each time calling ``get.threads`` to collect all threads and then ``paginate.and.scrape`` for each thread. Store the results in a single dataframe.
+**Exercise**: Write a function to iterate through the 10 pages of threads, each time calling ``get.threads`` to collect all threads. Next, use ``paginate.and.scrape`` for each thread. Store the results in a single data frame.
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 # Complete function here
 ```
@@ -395,22 +391,17 @@ print(threads$link)
 - Extract HTML from Javascript-based websites
 - Interact with web-based content
   - e.g., Click "OK" to a warning, complete a search box
-- **However**, ``RSelenium`` does not currently work directly in RMarkdown and requires a more complicated set up using a *Docker container* so I will not demo it today
+- **However**, ``RSelenium`` currently requires a more complicated set up using a *Docker container* to work in R so I will not demo it today
 
 # How to scrape a web page
 ## Data storage and logging
-- If collecting a lot of data, use a server to run a scrape and store scraped data
-- Write output to a database
+- If collecting a lot of data, use a server to run your code
+- Store output in a database
   - This helps to organize the data and makes it easier to query and manage
 - Keep a log file with a record of which pages you have scraped
-  - You could also use Slack to send progress updates
+  - You could use Slack to send progress updates
 
 # References
 - Fiesler, Casey, Nate Beard, and Brian C Keegan. 2020. “No Robots, Spiders, or Scrapers: Legal and Ethical Regulation of Data Collection Methods in Social Media Terms of Service.” In Proceedings of the Fourteenth International AAAI Conference on Web and Social Media, 187–96. AAAI.
 
 # Questions
-
-
-  
-
-<!-- Next we want to paginate through the whole forum-->
