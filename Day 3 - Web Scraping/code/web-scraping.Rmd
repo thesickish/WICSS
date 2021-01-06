@@ -280,7 +280,7 @@ print(pagination.4)
 ```
 
 # How to scrape a web page
-## ## Improving the function
+## Improving the function
 ```{r, echo=TRUE, mysize=TRUE, size='\\footnotesize', tidy=FALSE}
 get.next.page <- function(thread){
   links <- thread %>% html_nodes(".pageNav-jump") %>% 
